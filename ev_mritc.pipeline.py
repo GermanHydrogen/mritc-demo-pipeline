@@ -3,9 +3,10 @@ from pathlib import Path
 from shutil import copy2
 from typing import Any, Dict, List, Tuple
 from uuid import uuid4
+
+import pandas as pd
 from PIL import Image
 from PIL.ExifTags import TAGS
-
 from ifdo.models import ImageData
 
 from marimba.core.pipeline import BasePipeline
@@ -125,36 +126,64 @@ class MRITCPipeline(BasePipeline):
     def _compose(
         self, data_dirs: List[Path], configs: List[Dict[str, Any]], **kwargs: dict
     ) -> Dict[Path, Tuple[Path, List[ImageData]]]:
-        # Find all .png, .jpg, .jpeg files in data_dirs and create a mapping from input file path to output file path
         data_mapping = {}
         for data_dir, config in zip(data_dirs, configs):
             file_paths = []
             file_paths.extend(data_dir.glob("**/*"))
             base_output_path = Path(config.get("deployment_id"))
 
-            for file_path in file_paths:
-                if file_path.is_file() and file_path.suffix.lower() in [".jpg"]:
-                    output_file_path = base_output_path / "stills" / file_path.name
+            sensor_data_df = pd.read_csv(
+                str(data_dir / "data" / "MRITC_TAG_IN2018_V06_168.CSV")
+            )
+            sensor_data_df["FinalTime"] = pd.to_datetime(
+                sensor_data_df["FinalTime"], format="%Y-%m-%d %H:%M:%S.%f"
+            ).dt.floor("S")
 
-                    file_created_datetime = datetime.fromtimestamp(
-                        file_path.stat().st_ctime
+            for file_path in file_paths:
+                output_file_path = base_output_path / file_path.relative_to(data_dir)
+
+                if file_path.is_file() and file_path.suffix.lower() in [".jpg"]:
+                    iso_timestamp = file_path.name.split("_")[5]
+                    target_datetime = pd.to_datetime(
+                        iso_timestamp, format="%Y%m%dT%H%M%SZ"
                     )
-                    image_data_list = [  # in iFDO, the image data list for an image is a list containing single ImageData
+                    matching_rows = sensor_data_df[
+                        sensor_data_df["FinalTime"] == target_datetime
+                    ]
+
+                    # in iFDO, the image data list for an image is a list containing single ImageData
+                    image_data_list = [
                         ImageData(
-                            image_datetime=file_created_datetime,
-                            # image_latitude=sdf,
-                            # image_longitude=sdfd,
+                            image_datetime=datetime.strptime(
+                                iso_timestamp, "%Y%m%dT%H%M%SZ"
+                            ),
+                            image_latitude=matching_rows["UsblLatitude"].values[0],
+                            image_longitude=float(
+                                matching_rows["UsblLongitude"].values[0]
+                            ),
+                            image_depth=float(matching_rows["Altitude"].values[0]),
+                            image_altitude=float(matching_rows["Altitude"].values[0]),
+                            image_event=str(matching_rows["Operation"].values[0]),
+                            image_platform=self.config.get("platform_id"),
+                            image_sensor=str(matching_rows["Camera"].values[0]),
+                            image_camera_pitch_degrees=float(
+                                matching_rows["Pitch"].values[0]
+                            ),
+                            image_camera_roll_degrees=float(
+                                matching_rows["Roll"].values[0]
+                            ),
+                            image_uuid=str(uuid4()),
+                            # image_pi=self.config.get("voyage_pi"),
+                            image_creators=[],
+                            image_license="MIT",
+                            image_copyright="",
+                            image_abstract=self.config.get("abstract"),
                         )
                     ]
 
                     data_mapping[file_path] = output_file_path, image_data_list
 
-                if file_path.is_file() and file_path.suffix.lower() in [".mp4"]:
-                    output_file_path = base_output_path / "video" / file_path.name
-                    data_mapping[file_path] = output_file_path, None
-
-                if file_path.is_file() and file_path.suffix.lower() in [".csv"]:
-                    output_file_path = base_output_path / "data" / file_path.name
+                elif file_path.is_file():
                     data_mapping[file_path] = output_file_path, None
 
         return data_mapping
