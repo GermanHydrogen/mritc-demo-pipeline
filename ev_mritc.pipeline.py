@@ -103,6 +103,7 @@ class MRITCPipeline(BasePipeline):
                 file.is_file()
                 and file.suffix.lower() in [".jpg"]
                 and "_thumb" not in file.name
+                and "overview" not in file.name
             ):
                 stills_path = data_dir / "stills"
                 stills_path.mkdir(exist_ok=True)
@@ -146,7 +147,10 @@ class MRITCPipeline(BasePipeline):
             image.resize_fit(jpg, 300, 300, output_path)
             thumb_list.append(output_path)
 
-        self.logger.info(f"Creating thumbnail overview image: {output_path}")
+        thumbnail_overview_path = data_dir / "overview.jpg"
+        self.logger.info(
+            f"Creating thumbnail overview image: {str(thumbnail_overview_path)}"
+        )
         image.create_grid_image(thumb_list, data_dir / "overview.jpg")
 
     def _compose(
