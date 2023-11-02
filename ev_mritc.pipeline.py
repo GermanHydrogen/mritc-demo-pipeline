@@ -106,22 +106,25 @@ class MRITCPipeline(BasePipeline):
                 )
                 output_file_path = stills_path / output_file_name
                 file.rename(output_file_path)
+                self.logger.info(f"Renamed file {file.name} -> {output_file_path}")
 
             if file.is_file() and file.suffix.lower() in [".mp4"]:
                 video_path = data_dir / "video"
                 video_path.mkdir(exist_ok=True)
 
                 # Move videos
-                file_path = video_path / file.name
-                file.rename(file_path)
+                output_file_path = video_path / file.name
+                file.rename(output_file_path)
+                self.logger.info(f"Renamed file {file.name} -> {output_file_path}")
 
             if file.is_file() and file.suffix.lower() in [".csv"]:
                 data_path = data_dir / "data"
                 data_path.mkdir(exist_ok=True)
 
                 # Move data
-                file_path = data_path / file.name
-                file.rename(file_path)
+                output_file_path = data_path / file.name
+                file.rename(output_file_path)
+                self.logger.info(f"Renamed file {file.name} -> {output_file_path}")
 
     def _compose(
         self, data_dirs: List[Path], configs: List[Dict[str, Any]], **kwargs: dict
