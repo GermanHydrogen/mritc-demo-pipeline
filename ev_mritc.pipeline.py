@@ -10,6 +10,7 @@ from PIL.ExifTags import TAGS
 from ifdo.models import ImageData
 
 from marimba.core.pipeline import BasePipeline
+from marimba.lib import image
 
 
 class MRITCPipeline(BasePipeline):
@@ -95,8 +96,14 @@ class MRITCPipeline(BasePipeline):
             )
 
     def _process(self, data_dir: Path, config: Dict[str, Any], **kwargs: dict):
+        jpg_list = []
+
         for file in data_dir.glob("**/*"):
-            if file.is_file() and file.suffix.lower() in [".jpg"]:
+            if (
+                file.is_file()
+                and file.suffix.lower() in [".jpg"]
+                and "_thumb" not in file.name
+            ):
                 stills_path = data_dir / "stills"
                 stills_path.mkdir(exist_ok=True)
 
@@ -107,6 +114,8 @@ class MRITCPipeline(BasePipeline):
                 output_file_path = stills_path / output_file_name
                 file.rename(output_file_path)
                 self.logger.info(f"Renamed file {file.name} -> {output_file_path}")
+
+                jpg_list.append(output_file_path)
 
             if file.is_file() and file.suffix.lower() in [".mp4"]:
                 video_path = data_dir / "video"
@@ -125,6 +134,20 @@ class MRITCPipeline(BasePipeline):
                 output_file_path = data_path / file.name
                 file.rename(output_file_path)
                 self.logger.info(f"Renamed file {file.name} -> {output_file_path}")
+
+        thumb_list = []
+        thumbs_path = data_dir / "thumb"
+        thumbs_path.mkdir(exist_ok=True)
+
+        for jpg in jpg_list:
+            output_filename = jpg.stem + "_thumb" + jpg.suffix
+            output_path = thumbs_path / output_filename
+            self.logger.info(f"Generating thumbnail image: {output_path}")
+            image.resize_fit(jpg, 300, 300, output_path)
+            thumb_list.append(output_path)
+
+        self.logger.info(f"Creating thumbnail overview image: {output_path}")
+        image.create_grid_image(thumb_list, data_dir / "overview.jpg")
 
     def _compose(
         self, data_dirs: List[Path], configs: List[Dict[str, Any]], **kwargs: dict
