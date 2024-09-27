@@ -43,7 +43,13 @@ class MRITCDemoPipeline(BasePipeline):
     def get_collection_config_schema() -> dict:
         return {}
 
-    def _import(self, data_dir: Path, source_path: Path, config: Dict[str, Any], **kwargs: dict):
+    def _import(
+            self,
+            data_dir: Path,
+            source_path: Path,
+            config: Dict[str, Any],
+            **kwargs: dict,
+    ):
         # Log the start of the import operation
         self.logger.info(f"Importing data from {source_path=} to {data_dir}")
 
@@ -115,7 +121,12 @@ class MRITCDemoPipeline(BasePipeline):
             self.logger.error(f"Error extracting timestamp from MP4: {e}")
             return "00000000T000000Z"
 
-    def _process(self, data_dir: Path, config: Dict[str, Any], **kwargs: dict):
+    def _process(
+            self,
+            data_dir: Path,
+            config: Dict[str, Any],
+            **kwargs: dict,
+    ):
         # Define directories for each type of file
         paths = {
             "images": data_dir / "images",
@@ -199,7 +210,7 @@ class MRITCDemoPipeline(BasePipeline):
             self,
             data_dir: Path,
             config: Dict[str, Any],
-            **kwargs: dict
+            **kwargs: dict,
     ) -> Dict[Path, Tuple[Path, Optional[ImageData], Optional[Dict[str, Any]]]]:
 
         # Initialise an empty dictionary to store file mappings
