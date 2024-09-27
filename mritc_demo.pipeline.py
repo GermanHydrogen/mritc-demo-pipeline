@@ -213,7 +213,7 @@ class MRITCDemoPipeline(BasePipeline):
         sensor_data_df["FinalTime"] = pd.to_datetime(
             sensor_data_df["FinalTime"],
             format="%Y-%m-%d %H:%M:%S.%f"
-        ).dt.floor("s").astype(str)
+        ).dt.floor("s")
 
         for file_path in file_paths:
 
@@ -223,23 +223,41 @@ class MRITCDemoPipeline(BasePipeline):
             # Define the output path relative to the deployment ID
             output_file_path = deployment_id / file_path.relative_to(data_dir)
 
-            # Process only valid image files (JPGs), excluding thumbnails and overview images
+            # Process only valid image files (JPGs) and videos (MP4s), excluding thumbnails and overview images
             if (
                     file_path.is_file()
-                    and file_path.suffix.lower() == ".jpg"
+                    and file_path.suffix.lower() in [".jpg", ".mp4"]
                     and "_THUMB" not in file_path.name
                     and "overview" not in file_path.name
             ):
                 # Extract the ISO timestamp from the filename
-                iso_timestamp = file_path.name.split("_")[5]
+                index_map = {".jpg": 5, ".mp4": 4}
+                iso_timestamp = file_path.stem.split("_")[index_map.get(file_path.suffix.lower(), -1)]
+
                 # Convert the ISO timestamp to a datetime object
                 target_datetime = pd.to_datetime(iso_timestamp, format="%Y%m%dT%H%M%SZ")
 
-                # Fetch the first matching row from the sensor data
-                matching_row = sensor_data_df.loc[sensor_data_df["FinalTime"] == target_datetime]
+                # Check file type and perform the appropriate matching
+                if file_path.suffix.lower() == ".jpg":
+                    # For jpgs, find the perfect match
+                    matching_row = sensor_data_df.loc[sensor_data_df["FinalTime"] == target_datetime]
+                elif file_path.suffix.lower() == ".mp4":
+                    # For mp4s, find the closest match
+                    time_diffs = abs(sensor_data_df["FinalTime"] - target_datetime)
+                    matching_row = sensor_data_df.loc[time_diffs.idxmin()]
+                else:
+                    raise ValueError("Unsupported file type")
 
                 if not matching_row.empty:
-                    first_row = matching_row.iloc[0]
+                    if isinstance(matching_row, pd.DataFrame):
+                        first_row = matching_row.iloc[0].copy()
+                    elif isinstance(matching_row, pd.Series):
+                        first_row = matching_row.copy()
+                    else:
+                        raise ValueError(f"Unexpected type for matching_row: {type(matching_row)}")
+
+                    # Convert any Timestamp fields in first_row directly to ISO 8601 strings
+                    first_row = first_row.map(lambda x: x.isoformat() if isinstance(x, pd.Timestamp) else x)
 
                     # Construct the ImageData instance with necessary metadata
                     image_data = ImageData(
@@ -252,12 +270,12 @@ class MRITCDemoPipeline(BasePipeline):
                         # image_coordinate_uncertainty_meters=None,
                         # image_context=None,
                         # image_project=None,
-                        image_event=str(first_row["Operation"]),
+                        image_event=deployment_id,
                         image_platform=self.config.get("platform_id"),
                         image_sensor=str(first_row["Camera"]),
                         image_uuid=str(uuid4()),
-                        image_pi=ImagePI(name="Keiko Abe", orcid="0000-0000-0000-0000"),
-                        image_creators=[ImagePI(name="Keiko Abe", orcid="0000-0000-0000-0000")],
+                        image_pi=ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558"),
+                        image_creators=[ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558")],
                         image_license="CC BY 4.0",
                         image_copyright="CSIRO",
                         # image_abstract=None,
