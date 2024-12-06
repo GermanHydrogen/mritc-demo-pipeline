@@ -19,7 +19,10 @@ from ifdo.models import (
     ImageNavigation,
     ImagePixelMagnitude,
     ImageQuality,
-    ImageSpectralResolution, ImagePI,
+    ImageSpectralResolution,
+    ImagePI,
+    Context,
+    License,
 )
 
 from marimba.core.pipeline import BasePipeline
@@ -281,13 +284,16 @@ class MRITCDemoPipeline(BasePipeline):
                         # image_coordinate_uncertainty_meters=None,
                         # image_context=None,
                         # image_project=None,
-                        image_event=deployment_id,
-                        image_platform=self.config.get("platform_id"),
-                        image_sensor=str(first_row["Camera"]),
+                        image_event=Context(name=deployment_id),
+                        image_platform=Context(name=self.config.get("platform_id")),
+                        image_sensor=Context(name=str(first_row["Camera"])),
                         image_uuid=str(uuid4()),
                         image_pi=ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558"),
                         image_creators=[ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558")],
-                        image_license="CC BY 4.0",
+                        image_license = License(
+                            name="CC BY-NC-SA 4.0",
+                            uri="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                        ),
                         image_copyright="CSIRO",
                         # image_abstract=None,
                         # Note: Marimba automatically calculates and injects the SHA256 hash during packaging
