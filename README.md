@@ -152,7 +152,7 @@ datasets/IN2018_V06/
 
 ## Pipeline Components
 
-The MRITC Demo Pipeline implements three main processing stages:
+The Marimba MRITC Demo Pipeline implements three main processing stages:
 
 1. **Import (`_import`)**: Copies raw data files from source directories into the Marimba project structure
 2. **Process (`_process`)**: 
@@ -167,7 +167,7 @@ The MRITC Demo Pipeline implements three main processing stages:
 
 ## License
 
-The MRITC Demo Pipeline is distributed under the [CSIRO BSD/MIT license](LICENSE.txt).
+The Marimba MRITC Demo Pipeline is distributed under the [CSIRO BSD/MIT license](LICENSE.txt).
 
 
 ## Contact
@@ -181,5 +181,5 @@ For inquiries related to this repository, please contact:
 
 ## Acknowledgments
 
-This pipeline processes data collected on the Marine National Facility (MNF) RV _Investigator_ voyage IN2018_V06. We
+This Pipeline processes data collected on the Marine National Facility (MNF) RV _Investigator_ voyage IN2018_V06. We
 acknowledge all research participants and organizations involved in the original data collection.
