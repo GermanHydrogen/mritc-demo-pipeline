@@ -21,8 +21,9 @@ from ifdo.models import (
     ImageQuality,
     ImageSpectralResolution,
     ImagePI,
-    Context,
-    License,
+    ImageContext,
+    ImageLicense,
+    ImageCreator
 )
 
 from marimba.core.pipeline import BasePipeline
@@ -284,13 +285,13 @@ class MRITCDemoPipeline(BasePipeline):
                         # image_coordinate_uncertainty_meters=None,
                         # image_context=None,
                         # image_project=None,
-                        image_event=Context(name=deployment_id),
-                        image_platform=Context(name=self.config.get("platform_id")),
-                        image_sensor=Context(name=str(first_row["Camera"])),
+                        image_event=ImageContext(name=deployment_id),
+                        image_platform=ImageContext(name=self.config.get("platform_id")),
+                        image_sensor=ImageContext(name=str(first_row["Camera"])),
                         image_uuid=str(uuid4()),
-                        image_pi=ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558"),
-                        image_creators=[ImagePI(name="Chris Jackett", orcid="0000-0003-1132-1558")],
-                        image_license = License(
+                        image_pi=ImagePI(name="Chris Jackett", uri="0000-0003-1132-1558"),
+                        image_creators=[ImageCreator(name="Chris Jackett", uri="0000-0003-1132-1558")],
+                        image_license = ImageLicense(
                             name="CC BY-NC-SA 4.0",
                             uri="https://creativecommons.org/licenses/by-nc-sa/4.0/"
                         ),
