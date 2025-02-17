@@ -1,5 +1,7 @@
+"""Marimba Pipeline for processing MRITC (Marine Robotics Imaging and Timeseries Capture) data."""   # noqa: INP001
+
 import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from shutil import copy2
 from typing import Any
@@ -32,6 +34,22 @@ from PIL.ExifTags import TAGS
 
 
 class MRITCDemoPipeline(BasePipeline):
+    """
+    Marimba Pipeline for processing MRITC data.
+
+    This class extends BasePipeline to provide specific functionality for handling MRITC data. It includes methods for
+    importing, processing, and packaging data from marine surveys, handling image and video files with associated
+    metadata.
+
+    Methods:
+        get_pipeline_config_schema(): Get the pipeline configuration schema.
+        get_collection_config_schema(): Get the collection configuration schema.
+        get_image_output_file_name(file_path): Generate standardized output filename for image files.
+        get_mp4_timestamp(file_path): Extract timestamp from MP4 file metadata.
+        _import(data_dir, source_path, config, **kwargs): Import data from source to destination directory.
+        _process(data_dir, config, **kwargs): Process the imported data.
+        _package(data_dir, config, **kwargs): Package the processed data with metadata.
+    """
 
     def __init__(
         self,
@@ -59,6 +77,12 @@ class MRITCDemoPipeline(BasePipeline):
 
     @staticmethod
     def get_pipeline_config_schema() -> dict:
+        """
+        Get the pipeline configuration schema for the MRITC pipeline.
+
+        Returns:
+            dict: Configuration parameters for the pipeline
+        """
         return {
             "voyage_id": "IN2018_V06",
             "voyage_pi": "Alan Williams",
@@ -69,6 +93,12 @@ class MRITCDemoPipeline(BasePipeline):
 
     @staticmethod
     def get_collection_config_schema() -> dict:
+        """
+        Get the collection configuration schema for the MRITC pipeline.
+
+        Returns:
+            dict: Configuration parameters for the collection
+        """
         return {}
 
     def _import(
@@ -92,9 +122,25 @@ class MRITCDemoPipeline(BasePipeline):
                 self.logger.debug(f"Copied {source_file.resolve().absolute()} -> {data_dir}")
 
     def get_image_output_file_name(self, file_path: Path) -> str:
+        """
+        Generate a standardized output filename for an image file based on its metadata.
+
+        This method extracts EXIF data from the image file to determine the timestamp and combines it with
+        configuration parameters to create a standardized filename following the format:
+        <platform_id>_SCP_<voyage_prefix>_<voyage_suffix>_<deployment_id>_<timestamp>_<index>.JPG
+
+        Args:
+            file_path (Path): Path to the source image file.
+
+        Returns:
+            str: Standardized filename for the image.
+
+        Raises:
+            OSError: If the image file cannot be opened or read.
+        """
         try:
             image = Image.open(file_path)
-            exif_data = image._getexif() if hasattr(image, "_getexif") else None
+            exif_data = getattr(image, "_getexif", lambda: None)()
 
             index = int(str(file_path).split("_")[-1].split(".")[0])
 
@@ -102,7 +148,7 @@ class MRITCDemoPipeline(BasePipeline):
                 # Extract DateTime from EXIF if available
                 date_str = next((value for tag, value in exif_data.items() if TAGS.get(tag) == "DateTime"), None)
                 if date_str:
-                    date = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S")
+                    date = datetime.strptime(date_str, "%Y:%m:%d %H:%M:%S").replace(tzinfo=timezone.utc)
                     iso_timestamp = date.strftime("%Y%m%dT%H%M%SZ")
 
                     # Safely get config data with defaults
@@ -139,7 +185,8 @@ class MRITCDemoPipeline(BasePipeline):
             # Parse the creation_time output
             creation_time_str = result.stdout.strip()
             if creation_time_str:
-                creation_time = datetime.strptime(creation_time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                creation_time = datetime.strptime(creation_time_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+                    tzinfo=timezone.utc)
                 return creation_time.strftime("%Y%m%dT%H%M%SZ")
             self.logging.exception(f"No creation time found in MP4 metadata for {file_path}")
             return "00000000T000000Z"
@@ -301,7 +348,7 @@ class MRITCDemoPipeline(BasePipeline):
                     # ruff: noqa: ERA001
                     image_data = ImageData(
                         # iFDO core
-                        image_datetime=datetime.strptime(iso_timestamp, "%Y%m%dT%H%M%SZ"),
+                        image_datetime=datetime.strptime(iso_timestamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc),
                         image_latitude=float(first_row["UsblLatitude"]),
                         image_longitude=float(first_row["UsblLongitude"]),
                         image_altitude=float(first_row["Altitude"]),
