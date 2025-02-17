@@ -1,4 +1,4 @@
-"""Marimba Pipeline for processing MRITC (Marine Robotics Imaging and Timeseries Capture) data."""   # noqa: INP001
+"""Marimba Pipeline for processing MRITC (Marine Robotics Imaging and Timeseries Capture) data."""
 
 import subprocess
 from datetime import datetime, timezone
@@ -102,11 +102,11 @@ class MRITCDemoPipeline(BasePipeline):
         return {}
 
     def _import(
-            self,
-            data_dir: Path,
-            source_path: Path,
-            config: dict[str, Any],  # noqa: ARG002
-            **kwargs: dict,  # noqa: ARG002
+        self,
+        data_dir: Path,
+        source_path: Path,
+        config: dict[str, Any],  # noqa: ARG002
+        **kwargs: dict,  # noqa: ARG002
     ) -> None:
         # Log the start of the import operation
         self.logger.info(f"Importing data from {source_path=} to {data_dir}")
@@ -195,10 +195,10 @@ class MRITCDemoPipeline(BasePipeline):
             return "00000000T000000Z"
 
     def _process(
-            self,
-            data_dir: Path,
-            config: dict[str, Any],  # noqa: ARG002
-            **kwargs: dict,  # noqa: ARG002
+        self,
+        data_dir: Path,
+        config: dict[str, Any],  # noqa: ARG002
+        **kwargs: dict,  # noqa: ARG002
     ) -> None:
         # Define directories for each type of file
         paths = {
@@ -280,10 +280,10 @@ class MRITCDemoPipeline(BasePipeline):
                 self.logging.exception(f"Error creating overview image: {e!s}")
 
     def _package(
-            self,
-            data_dir: Path,
-            config: dict[str, Any],  # noqa: ARG002
-            **kwargs: dict,  # noqa: ARG002
+        self,
+        data_dir: Path,
+        config: dict[str, Any],  # noqa: ARG002
+        **kwargs: dict,  # noqa: ARG002
     ) -> dict[Path, tuple[Path, ImageData | None, dict[str, Any] | None]]:
 
         # Initialise an empty dictionary to store file mappings
@@ -310,10 +310,10 @@ class MRITCDemoPipeline(BasePipeline):
 
             # Process only valid image files (JPGs) and videos (MP4s), excluding thumbnails and overview images
             if (
-                    file_path.is_file()
-                    and file_path.suffix.lower() in [".jpg", ".mp4"]
-                    and "_THUMB" not in file_path.name
-                    and "overview" not in file_path.name
+                file_path.is_file()
+                and file_path.suffix.lower() in [".jpg", ".mp4"]
+                and "_THUMB" not in file_path.name
+                and "overview" not in file_path.name
             ):
                 # Extract the ISO timestamp from the filename
                 index_map = {".jpg": 5, ".mp4": 4}
@@ -360,9 +360,9 @@ class MRITCDemoPipeline(BasePipeline):
                         image_platform=ImageContext(name=self.config.get("platform_id")),
                         image_sensor=ImageContext(name=str(first_row["Camera"])),
                         image_uuid=str(uuid4()),
-                        image_pi=ImagePI(name="Chris Jackett", uri="0000-0003-1132-1558"),
-                        image_creators=[ImageCreator(name="Chris Jackett", uri="0000-0003-1132-1558")],
-                        image_license = ImageLicense(
+                        image_pi=ImagePI(name="Keiko Abe", uri="https://orcid.org/0000-0000-0000-0000"),
+                        image_creators=[ImageCreator(name="Keiko Abe", uri="https://orcid.org/0000-0000-0000-0000")],
+                        image_license=ImageLicense(
                             name="CC BY-NC-SA 4.0",
                             uri="https://creativecommons.org/licenses/by-nc-sa/4.0/",
                         ),
