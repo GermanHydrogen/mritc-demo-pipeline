@@ -1,4 +1,4 @@
-"""Marimba Pipeline for processing MRITC (Marine Robotics Imaging and Timeseries Capture) data."""
+"""Marimba Pipeline for processing MRITC data."""
 
 import subprocess
 from datetime import datetime, timezone
