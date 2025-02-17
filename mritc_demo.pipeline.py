@@ -24,6 +24,7 @@ from ifdo.models import (
     ImageSpectralResolution,
 )
 from marimba.core.pipeline import BasePipeline
+from marimba.core.schemas.ifdo import iFDOMetadata
 from marimba.lib import image
 from marimba.main import __version__
 from PIL import Image
@@ -31,6 +32,30 @@ from PIL.ExifTags import TAGS
 
 
 class MRITCDemoPipeline(BasePipeline):
+
+    def __init__(
+        self,
+        root_path: str | Path,
+        config: dict[str, Any] | None = None,
+        *,
+        dry_run: bool = False,
+    ) -> None:
+        """
+        Initialize a new Pipeline instance.
+
+        Args:
+            root_path (str | Path): Base directory path where the pipeline will store its data and configuration files.
+            config (dict[str, Any] | None, optional): Pipeline configuration dictionary. If None, default configuration
+             will be used. Defaults to None.
+            dry_run (bool, optional): If True, prevents any filesystem modifications. Useful for validation and testing.
+             Defaults to False.
+        """
+        super().__init__(
+            root_path,
+            config,
+            dry_run=dry_run,
+            metadata_class=iFDOMetadata,
+        )
 
     @staticmethod
     def get_pipeline_config_schema() -> dict:
@@ -351,7 +376,8 @@ class MRITCDemoPipeline(BasePipeline):
                     )
 
                     # Add the image file, metadata (ImageData), and ancillary metadata to the data mapping
-                    data_mapping[file_path] = (output_file_path, [image_data], first_row.to_dict())
+                    metadata = self._metadata_class(image_data)
+                    data_mapping[file_path] = output_file_path, [metadata], first_row.to_dict()
 
             # For non-image files, add them without metadata
             elif file_path.is_file():
