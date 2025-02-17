@@ -2,33 +2,32 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from shutil import copy2
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any
 from uuid import uuid4
 
 import pandas as pd
-from PIL import Image
-from PIL.ExifTags import TAGS
 from ifdo.models import (
     ImageAcquisition,
     ImageCaptureMode,
+    ImageContext,
+    ImageCreator,
     ImageData,
     ImageDeployment,
     ImageFaunaAttraction,
     ImageIllumination,
+    ImageLicense,
     ImageMarineZone,
     ImageNavigation,
+    ImagePI,
     ImagePixelMagnitude,
     ImageQuality,
     ImageSpectralResolution,
-    ImagePI,
-    ImageContext,
-    ImageLicense,
-    ImageCreator
 )
-
 from marimba.core.pipeline import BasePipeline
 from marimba.lib import image
 from marimba.main import __version__
+from PIL import Image
+from PIL.ExifTags import TAGS
 
 
 class MRITCDemoPipeline(BasePipeline):
@@ -51,9 +50,9 @@ class MRITCDemoPipeline(BasePipeline):
             self,
             data_dir: Path,
             source_path: Path,
-            config: Dict[str, Any],
-            **kwargs: dict,
-    ):
+            config: dict[str, Any],  # noqa: ARG002
+            **kwargs: dict,  # noqa: ARG002
+    ) -> None:
         # Log the start of the import operation
         self.logger.info(f"Importing data from {source_path=} to {data_dir}")
 
@@ -92,13 +91,12 @@ class MRITCDemoPipeline(BasePipeline):
                         f"{voyage_parts[0]}_{voyage_parts[1]}_{deployment_id}_"
                         f"{iso_timestamp}_{index:04d}.JPG"
                     )
-                else:
-                    self.logger.error(f"No EXIF DateTime tag found in image {file_path}")
+                self.logging.exception(f"No EXIF DateTime tag found in image {file_path}")
             else:
-                self.logger.error(f"No EXIF data found in image {file_path}")
+                self.logging.exception(f"No EXIF data found in image {file_path}")
 
-        except IOError:
-            self.logger.error(f"Error: Unable to open {file_path}. Are you sure it's an image?")
+        except OSError:
+            self.logging.exception(f"Error: Unable to open {file_path}. Are you sure it's an image?")
 
         # Return a default or error filename if necessary
         return "default_filename.JPG"
@@ -108,35 +106,34 @@ class MRITCDemoPipeline(BasePipeline):
         try:
             # Use ffprobe to get the creation_time of the MP4 file
             cmd = [
-                'ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
-                'format_tags=creation_time', '-of', 'default=noprint_wrappers=1:nokey=1', str(file_path)
+                "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                "format_tags=creation_time", "-of", "default=noprint_wrappers=1:nokey=1", str(file_path),
             ]
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
 
             # Parse the creation_time output
             creation_time_str = result.stdout.strip()
             if creation_time_str:
-                creation_time = datetime.strptime(creation_time_str, '%Y-%m-%dT%H:%M:%S.%fZ')
-                return creation_time.strftime('%Y%m%dT%H%M%SZ')
-            else:
-                self.logger.error(f"No creation time found in MP4 metadata for {file_path}")
-                return "00000000T000000Z"
+                creation_time = datetime.strptime(creation_time_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+                return creation_time.strftime("%Y%m%dT%H%M%SZ")
+            self.logging.exception(f"No creation time found in MP4 metadata for {file_path}")
+            return "00000000T000000Z"
         except Exception as e:
-            self.logger.error(f"Error extracting timestamp from MP4: {e}")
+            self.logging.exception(f"Error extracting timestamp from MP4: {e}")
             return "00000000T000000Z"
 
     def _process(
             self,
             data_dir: Path,
-            config: Dict[str, Any],
-            **kwargs: dict,
-    ):
+            config: dict[str, Any],  # noqa: ARG002
+            **kwargs: dict,  # noqa: ARG002
+    ) -> None:
         # Define directories for each type of file
         paths = {
             "images": data_dir / "images",
             "video": data_dir / "video",
             "data": data_dir / "data",
-            "thumbs": data_dir / "thumbnails"
+            "thumbs": data_dir / "thumbnails",
         }
 
         # Ensure all directories exist
@@ -184,8 +181,8 @@ class MRITCDemoPipeline(BasePipeline):
                     file.rename(output_file_path)
                     self.logger.info(f"Renamed CSV {file.name} -> {output_file_path}")
 
-            except (FileNotFoundError, IOError) as e:
-                self.logger.error(f"Error processing file {file.name}: {str(e)}")
+            except (OSError, FileNotFoundError) as e:
+                self.logging.exception(f"Error processing file {file.name}: {e!s}")
                 continue
 
         # Generate thumbnails for processed images
@@ -198,7 +195,7 @@ class MRITCDemoPipeline(BasePipeline):
                 image.resize_fit(jpg, 300, 300, output_path)
                 thumb_list.append(output_path)
             except Exception as e:
-                self.logger.error(f"Error creating thumbnail for {jpg.name}: {str(e)}")
+                self.logging.exception(f"Error creating thumbnail for {jpg.name}: {e!s}")
 
         # Create an overview image if thumbnails exist
         if thumb_list:
@@ -208,26 +205,27 @@ class MRITCDemoPipeline(BasePipeline):
             try:
                 image.create_grid_image(thumb_list, overview_path)
             except Exception as e:
-                self.logger.error(f"Error creating overview image: {str(e)}")
+                self.logging.exception(f"Error creating overview image: {e!s}")
 
     def _package(
             self,
             data_dir: Path,
-            config: Dict[str, Any],
-            **kwargs: dict,
-    ) -> Dict[Path, Tuple[Path, Optional[ImageData], Optional[Dict[str, Any]]]]:
+            config: dict[str, Any],  # noqa: ARG002
+            **kwargs: dict,  # noqa: ARG002
+    ) -> dict[Path, tuple[Path, ImageData | None, dict[str, Any] | None]]:
 
         # Initialise an empty dictionary to store file mappings
-        data_mapping: Dict[Path, Tuple[Path, Optional[List[ImageData]], Optional[Dict[str, Any]]]] = {}
+        data_mapping: dict[Path, tuple[Path, list[ImageData] | None, dict[str, Any] | None]] = {}
 
         # Recursively gather all file paths from the data directory
         file_paths = data_dir.rglob("*")
 
-        # Read the sensor data CSV file and parse the 'FinalTime' column as datetime, flooring to the nearest second for matching timestamps
+        # Read the sensor data CSV file and parse the 'FinalTime' column as datetime, flooring to the nearest second
+        # for matching timestamps
         sensor_data_df = pd.read_csv(next((data_dir / "data").glob("*.CSV")))
         sensor_data_df["FinalTime"] = pd.to_datetime(
             sensor_data_df["FinalTime"],
-            format="%Y-%m-%d %H:%M:%S.%f"
+            format="%Y-%m-%d %H:%M:%S.%f",
         ).dt.floor("s")
 
         for file_path in file_paths:
@@ -275,6 +273,7 @@ class MRITCDemoPipeline(BasePipeline):
                     first_row = first_row.map(lambda x: x.isoformat() if isinstance(x, pd.Timestamp) else x)
 
                     # Construct the ImageData instance with necessary metadata
+                    # ruff: noqa: ERA001
                     image_data = ImageData(
                         # iFDO core
                         image_datetime=datetime.strptime(iso_timestamp, "%Y%m%dT%H%M%SZ"),
@@ -293,7 +292,7 @@ class MRITCDemoPipeline(BasePipeline):
                         image_creators=[ImageCreator(name="Chris Jackett", uri="0000-0003-1132-1558")],
                         image_license = ImageLicense(
                             name="CC BY-NC-SA 4.0",
-                            uri="https://creativecommons.org/licenses/by-nc-sa/4.0/"
+                            uri="https://creativecommons.org/licenses/by-nc-sa/4.0/",
                         ),
                         image_copyright="CSIRO",
                         # image_abstract=None,
@@ -336,7 +335,6 @@ class MRITCDemoPipeline(BasePipeline):
                         image_curation_protocol=f"Processed with Marimba v{__version__}",
 
                         # # iFDO content (optional)
-                        # Note: Marimba automatically calculates and injects image_entropy and image_average_color during packaging
                         # image_entropy=0.0,
                         # image_particle_count=None,
                         # image_average_color=[0, 0, 0],
