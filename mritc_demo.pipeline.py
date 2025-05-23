@@ -7,7 +7,6 @@ from shutil import copy2
 from typing import Any
 from uuid import uuid4
 
-import pandas as pd
 from ifdo.models import (
     ImageAcquisition,
     ImageCaptureMode,
@@ -285,6 +284,7 @@ class MRITCDemoPipeline(BasePipeline):
         config: dict[str, Any],  # noqa: ARG002
         **kwargs: dict,  # noqa: ARG002
     ) -> dict[Path, tuple[Path, ImageData | None, dict[str, Any] | None]]:
+        import pandas as pd
 
         # Initialise an empty dictionary to store file mappings
         data_mapping: dict[Path, tuple[Path, list[ImageData] | None, dict[str, Any] | None]] = {}
