@@ -101,6 +101,36 @@ class MRITCDemoPipeline(BasePipeline):
         """
         return {}
 
+    def get_metadata_header(
+        self,
+        context: str,
+        collection_config: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Return header metadata for the given context."""
+        metadata = {
+            "copyright": "CSIRO",
+            "license_name": "CC BY-NC-SA 4.0",
+            "license_uri": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+        }
+
+        # Context-specific names (optional - smart defaults will be used if not specified)
+        if context == "dataset":
+            voyage_id = self.config.get('voyage_id', 'UNKNOWN')
+            metadata["name"] = f"Complete {voyage_id} Dataset"
+        elif context == "pipeline":
+            platform_id = self.config.get('platform_id', 'UNKNOWN')
+            metadata["name"] = f"{platform_id} Camera System"
+        elif context == "collection":
+            # Set custom name for collection
+            # If there's a deployment_id in the config, use it; otherwise use a generic collection name
+            deployment_id = collection_config.get("deployment_id") if collection_config else None
+            if deployment_id:
+                metadata["name"] = f"{self.config['platform_id']} Deployment {deployment_id}"
+            else:
+                metadata["name"] = f"{self.config['platform_id']} Collection"
+
+        return metadata
+
     def _import(
         self,
         data_dir: Path,
