@@ -210,7 +210,7 @@ class MRITCDemoPipeline(BasePipeline):
         try:
             result: list[dict[str, str]] = et.get_tags([file_path], tags=[self.CREATION_TIME_TAG])
             creation_time_str = result[0].get(self.CREATION_TIME_TAG, "00:00:00 00:00:00.000000Z")
-            creation_time = datetime.fromisoformat(creation_time_str)
+            creation_time = datetime.strptime(creation_time_str, "%Y:%m:%d %H:%M:%S.%fZ")
             return creation_time.strftime("%Y%m%dT%H%M%SZ")
         except Exception as e:
             self.logging.exception(f"Error extracting timestamp from MP4: {e}")
