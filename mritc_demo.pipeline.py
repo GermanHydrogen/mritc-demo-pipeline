@@ -243,41 +243,42 @@ class MRITCDemoPipeline(BasePipeline):
         platform_id = self.config.get("platform_id")
 
         # Process each file in the data directory
-        for file in data_dir.glob("*"):
-            # Skip directories
-            if not file.is_file():
-                continue
+        with exiftool.ExifToolHelper() as et:
+            for file in data_dir.glob("*"):
+                # Skip directories
+                if not file.is_file():
+                    continue
 
-            # Get deployment ID from the file path
-            deployment_id = str(file).split("/")[-3].split("_")[2]
-            file_ext = file.suffix.lower()  # Normalize file extension
+                # Get deployment ID from the file path
+                deployment_id = str(file).split("/")[-3].split("_")[2]
+                file_ext = file.suffix.lower()  # Normalize file extension
 
-            try:
-                # Process image files
-                if file_ext == ".jpg":
-                    output_file_path = paths["images"] / self.get_image_output_file_name(file)
-                    file.rename(output_file_path)
-                    self.logger.info(f"Renamed image {file.name} -> {output_file_path}")
-                    jpg_list.append(output_file_path)
+                try:
+                    # Process image files
+                    if file_ext == ".jpg":
+                        output_file_path = paths["images"] / self.get_image_output_file_name(file)
+                        file.rename(output_file_path)
+                        self.logger.info(f"Renamed image {file.name} -> {output_file_path}")
+                        jpg_list.append(output_file_path)
 
-                # Process MP4 files
-                elif file_ext == ".mp4":
-                    iso_timestamp = self.get_mp4_timestamp(file)
-                    new_mp4_name = f"{platform_id}_{voyage_id}_{deployment_id}_{iso_timestamp}.mp4"
-                    output_file_path = paths["video"] / new_mp4_name
-                    file.rename(output_file_path)
-                    self.logger.info(f"Renamed MP4 {file.name} -> {output_file_path}")
+                    # Process MP4 files
+                    elif file_ext == ".mp4":
+                        iso_timestamp = self.get_mp4_timestamp(et, file)
+                        new_mp4_name = f"{platform_id}_{voyage_id}_{deployment_id}_{iso_timestamp}.mp4"
+                        output_file_path = paths["video"] / new_mp4_name
+                        file.rename(output_file_path)
+                        self.logger.info(f"Renamed MP4 {file.name} -> {output_file_path}")
 
-                # Process CSV files
-                if file_ext == ".csv":
-                    new_csv_name = f"{platform_id}_{voyage_id}_{deployment_id}.CSV"
-                    output_file_path = paths["data"] / new_csv_name
-                    file.rename(output_file_path)
-                    self.logger.info(f"Renamed CSV {file.name} -> {output_file_path}")
+                    # Process CSV files
+                    if file_ext == ".csv":
+                        new_csv_name = f"{platform_id}_{voyage_id}_{deployment_id}.CSV"
+                        output_file_path = paths["data"] / new_csv_name
+                        file.rename(output_file_path)
+                        self.logger.info(f"Renamed CSV {file.name} -> {output_file_path}")
 
-            except (OSError, FileNotFoundError) as e:
-                self.logging.exception(f"Error processing file {file.name}: {e!s}")
-                continue
+                except (OSError, FileNotFoundError) as e:
+                    self.logging.exception(f"Error processing file {file.name}: {e!s}")
+                    continue
 
         # Generate thumbnails for processed images
         for jpg in jpg_list:
