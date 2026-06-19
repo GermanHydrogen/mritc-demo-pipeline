@@ -7,6 +7,7 @@ from shutil import copy2
 from typing import Any
 from uuid import uuid4
 
+import exiftool
 import pandas as pd
 from ifdo.models import (
     ImageAcquisition,
@@ -50,6 +51,8 @@ class MRITCDemoPipeline(BasePipeline):
         _process(data_dir, config, **kwargs): Process the imported data.
         _package(data_dir, config, **kwargs): Package the processed data with metadata.
     """
+
+    CREATION_TIME_TAG = "QuickTime:CreationTime"
 
     def __init__(
         self,
@@ -202,27 +205,16 @@ class MRITCDemoPipeline(BasePipeline):
         # Return a default or error filename if necessary
         return "default_filename.JPG"
 
-    def get_mp4_timestamp(self, file_path: Path) -> str:
-        """Extract timestamp from an MP4 file using ffprobe."""
+    def get_mp4_timestamp(self, et: exiftool.ExifToolHelper, file_path: Path) -> str:
+        """Extract timestamp from an MP4 file using exiftool."""
         try:
-            # Use ffprobe to get the creation_time of the MP4 file
-            cmd = [
-                "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                "format_tags=creation_time", "-of", "default=noprint_wrappers=1:nokey=1", str(file_path),
-            ]
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=False)
-
-            # Parse the creation_time output
-            creation_time_str = result.stdout.strip()
-            if creation_time_str:
-                creation_time = datetime.strptime(creation_time_str, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-                    tzinfo=timezone.utc)
-                return creation_time.strftime("%Y%m%dT%H%M%SZ")
-            self.logging.exception(f"No creation time found in MP4 metadata for {file_path}")
-            return "00000000T000000Z"
+            result: list[dict[str, str]] = et.get_tags([file_path], tags=[self.CREATION_TIME_TAG])
+            creation_time_str = result[0].get(self.CREATION_TIME_TAG, "00:00:00 00:00:00.000000Z")
+            creation_time = datetime.fromisoformat(creation_time_str)
+            return creation_time.strftime("%Y%m%dT%H%M%SZ")
         except Exception as e:
             self.logging.exception(f"Error extracting timestamp from MP4: {e}")
-            return "00000000T000000Z"
+            return "000000T000000Z"
 
     def _process(
         self,
